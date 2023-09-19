@@ -136,7 +136,6 @@ def posts():
     db = get_db()
     db_posts = DB(db).get_posts()
     context['posts'] = db_posts
-    print(context)
     return render_template('posts.html', context=context)
 
 

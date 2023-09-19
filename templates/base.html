@@ -16,12 +16,18 @@
 <body>
 {% block navigation %}
     <a href="{{ url_for('index') }}">home</a>
+    <a href="{{ url_for('posts') }}">all post</a>
     <a href="{{ url_for('about') }}">about</a>
     <a href="{{ url_for('contact') }}">contact</a>
+
+    {% if not session['userLogged'] %}
     <a href="{{ url_for('login') }}">login</a>
-    <a href="{{ url_for('logout') }}">logout</a>
+    {% endif %}
+    {% if session['userLogged'] %}
     <a href="{{ url_for('add_post') }}">add post</a>
-    <a href="{{ url_for('posts') }}">all post</a>
+    <a href="{{ url_for('logout') }}">logout</a>
+    {% endif %}
+
     <hr>
 {% endblock %}
 {% block content %}
