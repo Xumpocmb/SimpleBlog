@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    {% for post in context['posts'] %}
+        <div>
+            <p>Post ID: {{ post['id'] }}</p>
+            <p>Title: {{ post['title'] }}</p>
+            <p>Text: {{ post['full_text'] }}</p>
+            <p>Author: {{ post['author'] }}</p>
+            <hr>
+        </div>
+    {% endfor %}
+{% endblock %}
