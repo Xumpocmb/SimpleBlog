@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    {% if context['post'] %}
+        <div>
+            <p>Post ID: {{ context.post.id }}</p>
+            <p>Title: {{ context.post['title'] }}</p>
+            <p>Text: {{ context.post['full_text'] }}</p>
+            <p>Author: {{ context.post['author'] }}</p>
+            <hr>
+        </div>
+    {% else %}
+        <p>No post yet!</p>
+    {% endif %}
+{% endblock %}

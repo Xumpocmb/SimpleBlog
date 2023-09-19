@@ -139,5 +139,36 @@ def posts():
     return render_template('posts.html', context=context)
 
 
+@app.route('/post/<int:id_post>')
+def show_post(id_post):
+    db = get_db()
+    post = DB(db).get_post(id_post)
+    context = {
+        'title': 'Posts Page',
+        'post': post,
+    }
+    return render_template('view_post.html', context=context)
+
+
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    context = {
+        'title': 'Register Page'
+    }
+    if request.method == 'POST':
+        if request.form['username'] and request.form['password']:
+            data = {'username': request.form['username'], 'password': request.form['password']}
+            db = get_db()
+            result = DB(db).add_user(data)
+            if result:
+                flash('You have register successfully!', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Error was detected!', 'error')
+        else:
+            flash('Please, fill all fields!', 'error')
+    return render_template('register.html', context=context)
+
+
 if __name__ == '__main__':
     app.run(debug=True)

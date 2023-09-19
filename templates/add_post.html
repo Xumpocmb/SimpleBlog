@@ -15,7 +15,10 @@
             <input type="submit" value="Create Post">
         </p>
     </form>
-    {% for category, message in get_flashed_messages(True) %}
-        {{ category }}:{{ message }}
-    {% endfor %}
+    <div>
+        {% for category, message in get_flashed_messages(True) %}
+            {{ category }}:{{ message }}
+        {% endfor %}
+    </div>
+
 {% endblock %}

@@ -1,1 +1,25 @@
 {% extends 'base.html' %}
+
+{% block content %}
+
+    <p>Hello! You can register here!</p>
+    <form action="/register" method="post">Fill your data bellow:
+    <p>
+        <label for="username">Username: </label>
+        <input type="text" name="username" id="username">
+    </p>
+    <p>
+        <label for="password">Password: </label>
+        <input type="password" name="password" id="password">
+    </p>
+    <p>
+        <input type="submit" value="Create account">
+    </p>
+    </form>
+    <div>
+        {% for category, message in get_flashed_messages(True) %}
+            {{ category }}:{{ message }}
+        {% endfor %}
+    </div>
+
+{% endblock %}

@@ -3,10 +3,10 @@
 {% block content %}
     {% for post in context['posts'] %}
         <div>
-            <p>Post ID: {{ post['id'] }}</p>
             <p>Title: {{ post['title'] }}</p>
-            <p>Text: {{ post['full_text'] }}</p>
+            <p>Text: {{ post['full_text'][:150] }}...</p>
             <p>Author: {{ post['author'] }}</p>
+            <p><a href="{{ url_for('show_post', id_post=post.id) }}">View full post</a></p>
             <hr>
         </div>
     {% endfor %}
