@@ -1,4 +1,6 @@
-from flask import Flask, render_template, request, flash, session, url_for, redirect, abort, g
+from flask import Flask, render_template, request, flash, session, url_for, redirect, abort
+from flask_login import LoginManager, current_user, login_user, logout_user, login_required
+from flask_login import UserMixin
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -10,6 +12,35 @@ app.config['DATABASE'] = 'site.db'
 app.config['DEBUG'] = True
 app.config.from_object(__name__)
 # app.config.update(dict(DATABASE=os.path.join(app.root_path, 'site.db')))
+
+
+login_manager = LoginManager(app)
+login_manager.login_view = 'login'
+login_manager.login_message = "Авторизуйтесь для доступа к закрытым страницам"
+login_manager.login_message_category = "success"
+
+
+
+
+class UserLogin(UserMixin):
+    def fromDB(self, user_id):
+        self.__user = DB(app.config['DATABASE']).get_user_info_by_id(user_id)
+        print(self.__user['id'])
+        return self
+
+    def create(self, user):
+        self.__user = user
+        print(self.__user['id'])
+        return self
+
+    def get_id(self):
+        return str(self.__user['id'])
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    print("load_user")
+    return UserLogin().fromDB(user_id)
 
 
 @app.route('/')
@@ -43,39 +74,63 @@ def contact():
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
-    if request.method == 'GET':
-        # log = request.cookies.get('logged') if request.cookies.get('logged') else None
-        if 'userLogged' in session:
-            return redirect(url_for('profile', username=session['userLogged']))
-    elif request.method == 'POST':
-        if request.form.get('remember', None):
-            print('session permanent')
-            session.permanent = True
-        else:
-            session.permanent = False
-        user = DB(app.config['DATABASE']).get_user_password(request.form['username'])
-        if user and check_password_hash(user['password'], request.form['username']):
-            session['userLogged'] = request.form['username']
-            # request.cookies.__setitem__('logged', 'yes')
-            return redirect(url_for('profile', username=session['userLogged']))
-        else:
-            flash('Wrong data!', 'error')
+    if current_user.is_authenticated:
+        return redirect(url_for('view_profile'))
+
+    if request.method == "POST":
+        user = DB(app.config['DATABASE']).get_user_info(request.form['username'])
+        if user and check_password_hash(user['password'], request.form['password']):
+            userlogin = UserLogin().create(user)
+            rm = True if request.form.get('remember') else False
+            login_user(userlogin, remember=rm)
+            return redirect(request.args.get("next") or url_for("view_profile"))
+
+        flash("Неверная пара логин/пароль", "error")
+
+    # if request.method == 'GET':
+    #     # log = request.cookies.get('logged') if request.cookies.get('logged') else None
+    #     if 'userLogged' in session:
+    #         return redirect(url_for('profile', username=session['userLogged']))
+    # elif request.method == 'POST':
+    #     if request.form.get('remember', None):
+    #         print('session permanent')
+    #         session.permanent = True
+    #     else:
+    #         session.permanent = False
+    #     user = DB(app.config['DATABASE']).get_user_password(request.form['username'])
+    #     if user and check_password_hash(user['password'], request.form['username']):
+    #         session['userLogged'] = request.form['username']
+    #         # request.cookies.__setitem__('logged', 'yes')
+    #         return redirect(url_for('profile', username=session['userLogged']))
+    #     else:
+    #         flash('Wrong data!', 'error')
     context = {
         'title': 'Login Page'
     }
     return render_template('login.html', context=context)
 
 
-@app.route('/profile/<username>')
-def profile(username):
+# @app.route('/profile/<username>')
+# def profile(username):
+#     context = {
+#         'title': 'Profile Page',
+#         'username': username,
+#     }
+#     if 'userLogged' not in session or session['userLogged'] != username:
+#         # abort(401)
+#         return redirect(url_for('profile', username=username))  # session['userLogged']
+#     # print(session)
+#     return render_template('profile.html', context=context)
+
+
+@app.route('/profile')
+@login_required
+def view_profile():
     context = {
         'title': 'Profile Page',
-        'username': username,
+        'username': current_user.get_id(),
     }
-    if 'userLogged' not in session or session['userLogged'] != username:
-        # abort(401)
-        return redirect(url_for('profile', username=username))  # session['userLogged']
-    # print(session)
+
     return render_template('profile.html', context=context)
 
 
@@ -90,7 +145,9 @@ def page_not_found(error):
 @app.route('/logout')
 def logout():
     # request.cookies.__setitem__('logged', '')
-    session.clear()
+    logout_user()
+    # session.clear()
+    flash("Вы вышли из аккаунта", "success")
     return redirect(url_for('login'))
 
 

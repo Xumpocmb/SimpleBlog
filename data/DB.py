@@ -23,6 +23,26 @@ class DB:
             print(f'Error: {e}')
         return None
 
+    def get_user_info(self, username):
+        sql = "select * from users where username=='{username}'".format(username=username)
+        try:
+            result = self.__cursor.execute(sql).fetchone()
+            self.close_connection()
+            return result
+        except Exception as e:
+            print(f'Error: {e}')
+        return None
+
+    def get_user_info_by_id(self, user_id):
+        sql = "select * from users where id=='{userid}'".format(userid=user_id)
+        try:
+            result = self.__cursor.execute(sql).fetchone()
+            self.close_connection()
+            return result
+        except Exception as e:
+            print(f'Error: {e}')
+        return None
+
     def add_user(self, data):
         sql = "insert into users (username, password) values ('{username}', '{password}')".format(
             username=data['username'], password=data['password'])

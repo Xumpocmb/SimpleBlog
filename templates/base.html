@@ -20,11 +20,11 @@
     <a href="{{ url_for('about') }}">about</a>
     <a href="{{ url_for('contact') }}">contact</a>
 
-    {% if not session['userLogged'] %}
+    {% if not current_user.is_authenticated %}
     <a href="{{ url_for('login') }}">login</a>
     {% endif %}
-    {% if session['userLogged'] %}
-    <a href="{{ url_for('profile', username=session['userLogged']) }}">profile</a>
+    {% if current_user.is_authenticated %}
+    <a href="{{ url_for('view_profile', username=session['userLogged']) }}">profile</a>
     <a href="{{ url_for('add_post') }}">add post</a>
     <a href="{{ url_for('logout') }}">logout</a>
     {% endif %}
