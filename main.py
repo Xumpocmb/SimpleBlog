@@ -4,33 +4,11 @@ import os
 from data.DB import DB
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = '123123'
+app.config['SECRET_KEY'] = 'dcbe456b65ee12a127af010e84054b7f24dc0910'
 app.config['DATABASE'] = 'site.db'
 app.config['DEBUG'] = True
 app.config.from_object(__name__)
 app.config.update(dict(DATABASE=os.path.join(app.root_path, 'site.db')))
-
-
-def connect_db():
-    connection = sqlite3.connect('site.db')
-    # записи из БД в виде словаря
-    connection.row_factory = sqlite3.Row
-    return connection
-
-
-def get_db():
-    """соединение с бд если не установлено"""
-    if not hasattr(g, 'link_db'):
-        g.link_db = connect_db()
-    return g.link_db
-
-
-@app.teardown_appcontext
-def close_db(error):
-    """закрываем соединение с бд если оно было установлено"""
-    if hasattr(g, 'link_db'):
-        g.link_db.close()
-        print('connection closed')
 
 
 @app.route('/')
@@ -64,13 +42,20 @@ def contact():
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
-    if 'userLogged' in session:
-        return redirect(url_for('profile', username=session['userLogged']))
+    if request.method == 'GET':
+        # log = request.cookies.get('logged') if request.cookies.get('logged') else None
+        if 'userLogged' in session:
+            return redirect(url_for('profile', username=session['userLogged']))
     elif request.method == 'POST':
-        db = get_db()
-        user = DB(db).get_user(request.form['username'])
+        if request.form.get('remember', None):
+            print('session permanent')
+            session.permanent = True
+        else:
+            session.permanent = False
+        user = DB(app.config['DATABASE']).get_user(request.form['username'])
         if request.form['password'] == user['password']:
             session['userLogged'] = request.form['username']
+            # request.cookies.__setitem__('logged', 'yes')
             return redirect(url_for('profile', username=session['userLogged']))
     context = {
         'title': 'Login Page'
@@ -87,7 +72,7 @@ def profile(username):
     if 'userLogged' not in session or session['userLogged'] != username:
         # abort(401)
         return redirect(url_for('profile', username=session['userLogged']))
-
+    # print(session)
     return render_template('profile.html', context=context)
 
 
@@ -101,6 +86,7 @@ def page_not_found(error):
 
 @app.route('/logout')
 def logout():
+    # request.cookies.__setitem__('logged', '')
     session.clear()
     return redirect(url_for('login'))
 
@@ -116,8 +102,7 @@ def add_post():
             post_info['title'] = request.form['title']
             post_info['text'] = request.form['text']
             post_info['author'] = session['userLogged']
-            db = get_db()
-            dbase = DB(db).add_post(post_info)
+            dbase = DB(app.config['DATABASE']).add_post(post_info)
             if dbase:
                 flash('The post was successfully added!', category='success')
             else:
@@ -133,16 +118,14 @@ def posts():
     context = {
         'title': 'Posts Page',
     }
-    db = get_db()
-    db_posts = DB(db).get_posts()
+    db_posts = DB(app.config['DATABASE']).get_posts()
     context['posts'] = db_posts
     return render_template('posts.html', context=context)
 
 
 @app.route('/post/<int:id_post>')
 def show_post(id_post):
-    db = get_db()
-    post = DB(db).get_post(id_post)
+    post = DB(app.config['DATABASE']).get_post(id_post)
     context = {
         'title': 'Posts Page',
         'post': post,
@@ -158,8 +141,7 @@ def register():
     if request.method == 'POST':
         if request.form['username'] and request.form['password']:
             data = {'username': request.form['username'], 'password': request.form['password']}
-            db = get_db()
-            result = DB(db).add_user(data)
+            result = DB(app.config['DATABASE']).add_user(data)
             if result:
                 flash('You have register successfully!', 'success')
                 return redirect(url_for('login'))

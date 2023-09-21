@@ -65,3 +65,4 @@ venv.bak/
 .idea/
 .idea/*
 .idea/*.xml
+/site.db
