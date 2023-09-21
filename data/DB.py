@@ -13,7 +13,7 @@ class DB:
         self.__connection.close()
         print('BD connection was closed')
 
-    def get_user(self, username):
+    def get_user_password(self, username):
         sql = "select password from users where username=='{username}'".format(username=username)
         try:
             result = self.__cursor.execute(sql).fetchone()
@@ -28,7 +28,7 @@ class DB:
             username=data['username'], password=data['password'])
         try:
             self.__cursor.execute(sql)
-            self.__db.commit()
+            self.__connection.commit()
             self.close_connection()
             return True
         except Exception as e:
@@ -39,7 +39,7 @@ class DB:
         sql = "insert into posts (title, full_text, author) values ('{title}', '{text}', '{author}')".format(title=data['title'], text=data['text'], author=data['author'])
         try:
             self.__cursor.execute(sql)
-            self.__db.commit()
+            self.__connection.commit()
             self.close_connection()
             return True
         except Exception as e:

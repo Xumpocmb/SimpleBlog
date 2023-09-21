@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, flash, session, url_for, redirect, abort, g
-import sqlite3
-import os
+
+from werkzeug.security import generate_password_hash, check_password_hash
+
 from data.DB import DB
 
 app = Flask(__name__)
@@ -8,7 +9,7 @@ app.config['SECRET_KEY'] = 'dcbe456b65ee12a127af010e84054b7f24dc0910'
 app.config['DATABASE'] = 'site.db'
 app.config['DEBUG'] = True
 app.config.from_object(__name__)
-app.config.update(dict(DATABASE=os.path.join(app.root_path, 'site.db')))
+# app.config.update(dict(DATABASE=os.path.join(app.root_path, 'site.db')))
 
 
 @app.route('/')
@@ -52,11 +53,13 @@ def login():
             session.permanent = True
         else:
             session.permanent = False
-        user = DB(app.config['DATABASE']).get_user(request.form['username'])
-        if request.form['password'] == user['password']:
+        user = DB(app.config['DATABASE']).get_user_password(request.form['username'])
+        if user and check_password_hash(user['password'], request.form['username']):
             session['userLogged'] = request.form['username']
             # request.cookies.__setitem__('logged', 'yes')
             return redirect(url_for('profile', username=session['userLogged']))
+        else:
+            flash('Wrong data!', 'error')
     context = {
         'title': 'Login Page'
     }
@@ -71,7 +74,7 @@ def profile(username):
     }
     if 'userLogged' not in session or session['userLogged'] != username:
         # abort(401)
-        return redirect(url_for('profile', username=session['userLogged']))
+        return redirect(url_for('profile', username=username))  # session['userLogged']
     # print(session)
     return render_template('profile.html', context=context)
 
@@ -140,7 +143,7 @@ def register():
     }
     if request.method == 'POST':
         if request.form['username'] and request.form['password']:
-            data = {'username': request.form['username'], 'password': request.form['password']}
+            data = {'username': request.form['username'], 'password': generate_password_hash(request.form['password'])}
             result = DB(app.config['DATABASE']).add_user(data)
             if result:
                 flash('You have register successfully!', 'success')
