@@ -85,3 +85,16 @@ class DB:
         except Exception as e:
             print(f'Error: {e}')
         return None
+
+    def updateUserAvatar(self, avatar, user_id):
+        if not avatar:
+            return False
+
+        try:
+            binary = sqlite3.Binary(avatar)
+            self.__cursor.execute(f"UPDATE users SET avatar = ? WHERE id = ?", (binary, user_id))
+            self.__connection.commit()
+        except sqlite3.Error as e:
+            print("Ошибка обновления аватара в БД: " + str(e))
+            return False
+        return True

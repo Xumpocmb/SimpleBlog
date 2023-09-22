@@ -1,6 +1,7 @@
-from flask import Flask, render_template, request, flash, session, url_for, redirect, abort
+from flask import Flask, render_template, request, flash, session, url_for, redirect, abort, make_response
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_login import UserMixin
+from forms import LoginForm, RegisterForm
 
 from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -10,16 +11,15 @@ app = Flask(__name__)
 app.config['SECRET_KEY'] = 'dcbe456b65ee12a127af010e84054b7f24dc0910'
 app.config['DATABASE'] = 'site.db'
 app.config['DEBUG'] = True
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
 app.config.from_object(__name__)
 # app.config.update(dict(DATABASE=os.path.join(app.root_path, 'site.db')))
 
 
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'
+login_manager.login_view = 'login'  # если не авторизован, то перенаправление
 login_manager.login_message = "Авторизуйтесь для доступа к закрытым страницам"
 login_manager.login_message_category = "success"
-
-
 
 
 class UserLogin(UserMixin):
@@ -36,10 +36,25 @@ class UserLogin(UserMixin):
     def get_id(self):
         return str(self.__user['id'])
 
+    def get_username(self):
+        return self.__user['username']
+
+    def get_avatar(self, app):
+        img = None
+        if not self.__user['avatar']:
+            try:
+                with app.open_resource(app.root_path + url_for('static', filename='img/default.png'), "rb") as f:
+                    img = f.read()
+            except FileNotFoundError as e:
+                print("Не найден аватар по умолчанию: " + str(e))
+        else:
+            img = self.__user['avatar']
+
+        return img
+
 
 @login_manager.user_loader
 def load_user(user_id):
-    print("load_user")
     return UserLogin().fromDB(user_id)
 
 
@@ -77,50 +92,41 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('view_profile'))
 
-    if request.method == "POST":
-        user = DB(app.config['DATABASE']).get_user_info(request.form['username'])
-        if user and check_password_hash(user['password'], request.form['password']):
-            userlogin = UserLogin().create(user)
-            rm = True if request.form.get('remember') else False
-            login_user(userlogin, remember=rm)
+    form = LoginForm()
+    if form.validate_on_submit():
+        user = DB(app.config['DATABASE']).get_user_info(form.username.data)
+        if user and check_password_hash(user['password'], form.password.data):
+            logged_user = UserLogin().create(user)
+            rm = True if form.remember.data else False
+            login_user(logged_user, remember=rm)
             return redirect(request.args.get("next") or url_for("view_profile"))
 
-        flash("Неверная пара логин/пароль", "error")
-
-    # if request.method == 'GET':
-    #     # log = request.cookies.get('logged') if request.cookies.get('logged') else None
-    #     if 'userLogged' in session:
-    #         return redirect(url_for('profile', username=session['userLogged']))
-    # elif request.method == 'POST':
-    #     if request.form.get('remember', None):
-    #         print('session permanent')
-    #         session.permanent = True
-    #     else:
-    #         session.permanent = False
-    #     user = DB(app.config['DATABASE']).get_user_password(request.form['username'])
-    #     if user and check_password_hash(user['password'], request.form['username']):
-    #         session['userLogged'] = request.form['username']
-    #         # request.cookies.__setitem__('logged', 'yes')
-    #         return redirect(url_for('profile', username=session['userLogged']))
-    #     else:
-    #         flash('Wrong data!', 'error')
+        flash("Error in data", "error")
     context = {
         'title': 'Login Page'
     }
-    return render_template('login.html', context=context)
+    return render_template('login.html', form=form, context=context)
 
 
-# @app.route('/profile/<username>')
-# def profile(username):
-#     context = {
-#         'title': 'Profile Page',
-#         'username': username,
-#     }
-#     if 'userLogged' not in session or session['userLogged'] != username:
-#         # abort(401)
-#         return redirect(url_for('profile', username=username))  # session['userLogged']
-#     # print(session)
-#     return render_template('profile.html', context=context)
+@app.route('/register', methods=['POST', 'GET'])
+def register():
+    context = {
+        'title': 'Register Page'
+    }
+
+    form = RegisterForm()
+    if request.method == 'POST':
+        if form.validate_on_submit():
+            data = {'username': form.username.data, 'password': generate_password_hash(form.password.data)}
+            result = DB(app.config['DATABASE']).add_user(data)
+            if result:
+                flash('You have register successfully!', 'success')
+                return redirect(url_for('login'))
+            else:
+                flash('Error was detected!', 'error')
+        else:
+            flash('Please, fill all fields!', 'error')
+    return render_template('register.html', context=context, form=form)
 
 
 @app.route('/profile')
@@ -128,7 +134,7 @@ def login():
 def view_profile():
     context = {
         'title': 'Profile Page',
-        'username': current_user.get_id(),
+        'user': current_user,
     }
 
     return render_template('profile.html', context=context)
@@ -144,9 +150,7 @@ def page_not_found(error):
 
 @app.route('/logout')
 def logout():
-    # request.cookies.__setitem__('logged', '')
     logout_user()
-    # session.clear()
     flash("Вы вышли из аккаунта", "success")
     return redirect(url_for('login'))
 
@@ -193,23 +197,39 @@ def show_post(id_post):
     return render_template('view_post.html', context=context)
 
 
-@app.route('/register', methods=['POST', 'GET'])
-def register():
-    context = {
-        'title': 'Register Page'
-    }
+
+
+
+@app.route('/userava')
+@login_required
+def userava():
+    img = current_user.get_avatar(app)
+    if not img:
+        return ""
+
+    h = make_response(img)
+    h.headers['Content-Type'] = 'image/jpeg'
+    return h
+
+
+@app.route('/upload', methods=["POST", "GET"])
+@login_required
+def upload():
     if request.method == 'POST':
-        if request.form['username'] and request.form['password']:
-            data = {'username': request.form['username'], 'password': generate_password_hash(request.form['password'])}
-            result = DB(app.config['DATABASE']).add_user(data)
-            if result:
-                flash('You have register successfully!', 'success')
-                return redirect(url_for('login'))
-            else:
-                flash('Error was detected!', 'error')
+        file = request.files['file']
+        if file:
+            try:
+                img = file.read()
+                res = DB(app.config['DATABASE']).updateUserAvatar(img, current_user.get_id())
+                if not res:
+                    flash("Ошибка обновления аватара1", "error")
+                flash("Аватар обновлен", "success")
+            except FileNotFoundError as e:
+                flash("Ошибка чтения файла", "error")
         else:
-            flash('Please, fill all fields!', 'error')
-    return render_template('register.html', context=context)
+            flash("Ошибка обновления аватара2", "error")
+
+    return redirect(url_for('view_profile'))
 
 
 if __name__ == '__main__':

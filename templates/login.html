@@ -6,21 +6,22 @@
             {{ category }}:{{ message }}
         {% endfor %}
     </div>
-    <form action="/login" method="post">
+    <form action="" method="post">
+    {{ form.hidden_tag() }}
     <p>
-        <label for="username">Name</label>
-        <input type="text" name="username" id="username">
+        {{ form.username.label() }}
+        {{ form.username() }}
     </p>
     <p>
-        <label for="password">Password</label>
-        <input type="password" name="password" id="password">
+        {{ form.password.label() }}
+        {{ form.password() }}
     </p>
     <p>
-        <label for="remember">Remember?</label>
-        <input type="checkbox" name="remember" id="remember">
+        {{ form.remember.label() }}
+        {{ form.remember() }}
     </p>
     <p>
-        <input type="submit" value="Login">
+        {{ form.submit() }}
     </p>
     </form>
 
