@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, flash, session, url_for, redi
 from flask_login import LoginManager, current_user, login_user, logout_user, login_required
 from flask_login import UserMixin
 from forms import LoginForm, RegisterForm
-
+from admin.admin import admin
 from werkzeug.security import generate_password_hash, check_password_hash
 
 from data.DB import DB
@@ -12,6 +12,7 @@ app.config['SECRET_KEY'] = 'dcbe456b65ee12a127af010e84054b7f24dc0910'
 app.config['DATABASE'] = 'site.db'
 app.config['DEBUG'] = True
 app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
+app.register_blueprint(admin, url_prefix='/admin')
 app.config.from_object(__name__)
 # app.config.update(dict(DATABASE=os.path.join(app.root_path, 'site.db')))
 
